@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model MenuItem {
+  id       String  @id @default(uuid())
+  name     String
+  category String  // pratos, bebidas, porcoes
+  price    Float
+  active   Boolean @default(true)
+  sides    String  @default("[]") // JSON array como string
+  extras   String  @default("[]") // JSON array como string [{name, price}]
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  customer  String
+  status    String      @default("pending") // pending, preparing, ready, delivered, paid
+  createdAt DateTime    @default(now())
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name        String
+  price       Float
+  details     String  @default("[]") // JSON array como string
+  observation String?
+  isMarmitex  Boolean @default(false)
+  quantity    Int     @default(1)
+}

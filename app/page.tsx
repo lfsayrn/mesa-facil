@@ -16,6 +16,8 @@ interface CartItem {
   price: number;
   details: string[];
   observation?: string;
+  isMarmitex?: boolean;
+  quantity: number;
 }
 
 function Skeleton({ className }: { className?: string }) {
@@ -37,6 +39,7 @@ export default function Home() {
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
   const [observation, setObservation] = useState("");
+  const [isMarmitex, setIsMarmitex] = useState(false);
 
   useEffect(() => {
     fetch("/api/menu")
@@ -53,9 +56,21 @@ export default function Home() {
       setSelectedSides([...item.sides]);
       setSelectedExtras([]);
       setObservation("");
+      setIsMarmitex(false);
       setIsModalOpen(true);
     } else {
-      setCart([...cart, { name: item.name, price: item.price, details: [] }]);
+      // Item básico (sem acompanhamentos) - incrementar quantidade se já existir
+      const existingIndex = cart.findIndex((c) => c.name === item.name && c.details.length === 0 && !c.observation);
+      if (existingIndex >= 0) {
+        const updated = [...cart];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + 1,
+        };
+        setCart(updated);
+      } else {
+        setCart([...cart, { name: item.name, price: item.price, details: [], quantity: 1 }]);
+      }
     }
   };
 
@@ -67,6 +82,7 @@ export default function Home() {
     const details: string[] = [];
     const itemSides = selectedItem.sides || [];
 
+    if (isMarmitex) details.push("📦 MARMITEX");
     if (selectedSides.length === itemSides.length) details.push("Completa");
     else if (selectedSides.length === 0) details.push("Sem acompanhamentos");
     else {
@@ -77,7 +93,14 @@ export default function Home() {
 
     setCart([
       ...cart,
-      { name: selectedItem.name, price: finalPrice, details, observation: observation.trim() || undefined },
+      {
+        name: selectedItem.name,
+        price: finalPrice,
+        details,
+        observation: observation.trim() || undefined,
+        isMarmitex,
+        quantity: 1,
+      },
     ]);
     setIsModalOpen(false);
   };
@@ -86,9 +109,20 @@ export default function Home() {
   const toggleExtra = (e: string) => setSelectedExtras((p) => (p.includes(e) ? p.filter((x) => x !== e) : [...p, e]));
   const removeFromCart = (i: number) => setCart(cart.filter((_, idx) => idx !== i));
 
+  const updateQuantity = (i: number, delta: number) => {
+    const updated = [...cart];
+    const newQty = updated[i].quantity + delta;
+    if (newQty <= 0) {
+      setCart(cart.filter((_, idx) => idx !== i));
+    } else {
+      updated[i] = { ...updated[i], quantity: newQty };
+      setCart(updated);
+    }
+  };
+
   const categories = ["pratos", "porcoes", "bebidas"];
   const filteredMenu = menu.filter((item) => item.category === activeCategory);
-  const cartTotal = cart.reduce((acc, item) => acc + item.price, 0);
+  const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const handleSubmit = async () => {
     if (cart.length === 0 || !customer) {
@@ -183,6 +217,21 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              <div>
+                <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wide mb-2">Tipo de Pedido</h3>
+                <button
+                  onClick={() => setIsMarmitex(!isMarmitex)}
+                  className={`w-full p-3 flex items-center justify-between text-sm font-medium border rounded-lg transition-all ${
+                    isMarmitex
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "bg-white text-stone-600 border-stone-200 hover:border-orange-400"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">📦 Marmitex</span>
+                  <span>{isMarmitex ? "✓ Sim" : "Mesa"}</span>
+                </button>
+              </div>
 
               <div>
                 <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wide mb-2">Observação</h3>
@@ -390,16 +439,27 @@ export default function Home() {
               cart.map((item, i) => (
                 <div
                   key={i}
-                  className="flex justify-between items-start p-3 bg-stone-50 rounded-lg border border-stone-100 group"
+                  className="flex justify-between items-start p-3 bg-stone-50 rounded-lg border border-stone-100"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-stone-700 text-sm truncate">{item.name}</p>
+                    <div className="flex items-center gap-2">
+                      {item.quantity > 1 && (
+                        <span className="bg-amber-700 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                          {item.quantity}x
+                        </span>
+                      )}
+                      <p className="font-medium text-stone-700 text-sm truncate">{item.name}</p>
+                    </div>
                     {item.details.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {item.details.map((d, j) => (
                           <span
                             key={j}
-                            className="text-[10px] text-stone-500 bg-white px-1.5 py-0.5 rounded border border-stone-200"
+                            className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                              d.includes("MARMITEX")
+                                ? "text-orange-700 bg-orange-50 border-orange-200 font-bold"
+                                : "text-stone-500 bg-white border-stone-200"
+                            }`}
                           >
                             {d}
                           </span>
@@ -409,14 +469,37 @@ export default function Home() {
                     {item.observation && (
                       <p className="text-[10px] text-amber-600 mt-1 italic">💬 {item.observation}</p>
                     )}
-                    <p className="text-sm font-bold text-amber-700 mt-1">R$ {item.price.toFixed(2)}</p>
+                    <p className="text-sm font-bold text-amber-700 mt-1">
+                      R$ {(item.price * item.quantity).toFixed(2)}
+                    </p>
                   </div>
-                  <button
-                    onClick={() => removeFromCart(i)}
-                    className="text-stone-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 md:opacity-100 transition-opacity"
-                  >
-                    🗑️
-                  </button>
+                  <div className="flex items-center gap-1 ml-2">
+                    {/* Controles de quantidade para itens básicos */}
+                    {item.details.length === 0 && !item.observation && (
+                      <>
+                        <button
+                          onClick={() => updateQuantity(i, -1)}
+                          className="w-7 h-7 flex items-center justify-center text-stone-500 border border-stone-200 rounded hover:bg-stone-100 active:bg-stone-200"
+                        >
+                          −
+                        </button>
+                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(i, 1)}
+                          className="w-7 h-7 flex items-center justify-center text-stone-500 border border-stone-200 rounded hover:bg-stone-100 active:bg-stone-200"
+                        >
+                          +
+                        </button>
+                      </>
+                    )}
+                    {/* Botão de remover - sempre visível */}
+                    <button
+                      onClick={() => removeFromCart(i)}
+                      className="w-7 h-7 flex items-center justify-center text-stone-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               ))
             )}

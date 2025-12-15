@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import { updateOrderStatus, Order } from "@/lib/store";
+import { prisma } from "@/lib/prisma";
 
-// We need to match the dynamic segment name from the file path [id]
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> } // Params are promises in Next.js 15+ (and recent 14)
-) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await request.json();
 
@@ -13,7 +9,18 @@ export async function PUT(
     return NextResponse.json({ error: "Status required" }, { status: 400 });
   }
 
-  updateOrderStatus(id, body.status as Order["status"]);
+  await prisma.order.update({
+    where: { id },
+    data: { status: body.status },
+  });
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  await prisma.order.delete({ where: { id } });
 
   return NextResponse.json({ success: true });
 }

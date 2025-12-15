@@ -1,8 +1,22 @@
 import { NextResponse } from "next/server";
-import { addOrder, getOrders, Order, OrderItem } from "@/lib/store";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  return NextResponse.json(getOrders());
+  const orders = await prisma.order.findMany({
+    include: { items: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // Parse JSON fields
+  const parsed = orders.map((order) => ({
+    ...order,
+    items: order.items.map((item) => ({
+      ...item,
+      details: JSON.parse(item.details),
+    })),
+  }));
+
+  return NextResponse.json(parsed);
 }
 
 export async function POST(request: Request) {
@@ -12,23 +26,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
   }
 
-  // Create Order Items with valid IDs
-  const orderItems: OrderItem[] = body.items.map((item: any) => ({
-    id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(7),
-    name: item.name,
-    price: item.price,
-    details: item.details || [], // Pass through details
-  }));
-
-  const newOrder: Order = {
-    id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(7),
-    customer: body.customer,
-    items: orderItems,
-    status: "pending",
-    createdAt: new Date(),
-  };
-
-  addOrder(newOrder);
+  const newOrder = await prisma.order.create({
+    data: {
+      customer: body.customer,
+      status: "pending",
+      items: {
+        create: body.items.map(
+          (item: {
+            name: string;
+            price: number;
+            details?: string[];
+            observation?: string;
+            isMarmitex?: boolean;
+            quantity?: number;
+          }) => ({
+            name: item.name,
+            price: item.price,
+            details: JSON.stringify(item.details || []),
+            observation: item.observation,
+            isMarmitex: item.isMarmitex || false,
+            quantity: item.quantity || 1,
+          })
+        ),
+      },
+    },
+    include: { items: true },
+  });
 
   return NextResponse.json(newOrder, { status: 201 });
 }

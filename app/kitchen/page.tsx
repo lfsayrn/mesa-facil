@@ -8,6 +8,8 @@ interface OrderItem {
   price: number;
   details?: string[];
   observation?: string;
+  isMarmitex?: boolean;
+  quantity?: number;
 }
 
 interface Order {
@@ -236,9 +238,23 @@ export default function Kitchen() {
                       <li key={idx} className="flex items-start gap-2">
                         <span className="text-stone-400 font-mono text-lg leading-none">□</span>
                         <div className="flex-1">
-                          <p className="font-semibold text-stone-700">{item.name}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(item.quantity ?? 1) > 1 && (
+                              <span className="bg-amber-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                {item.quantity}x
+                              </span>
+                            )}
+                            <p className="font-semibold text-stone-700">{item.name}</p>
+                            {item.isMarmitex && (
+                              <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                📦 MARMITEX
+                              </span>
+                            )}
+                          </div>
                           {item.details && item.details.length > 0 && (
-                            <p className="text-xs text-amber-700 font-medium mt-0.5">{item.details.join(" • ")}</p>
+                            <p className="text-xs text-amber-700 font-medium mt-0.5">
+                              {item.details.filter((d) => !d.includes("MARMITEX")).join(" • ")}
+                            </p>
                           )}
                           {item.observation && (
                             <p className="text-xs text-stone-500 italic mt-0.5 bg-amber-50 px-2 py-0.5 rounded inline-block">

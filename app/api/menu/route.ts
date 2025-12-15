@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
-import { getMenu, getAllMenuItems, addMenuItem, updateMenuItem, deleteMenuItem, MenuItem } from "@/lib/store";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const all = searchParams.get("all");
 
-  if (all === "true") {
-    return NextResponse.json(getAllMenuItems());
-  }
-  return NextResponse.json(getMenu());
+  const items = await prisma.menuItem.findMany({
+    where: all === "true" ? {} : { active: true },
+    orderBy: { name: "asc" },
+  });
+
+  // Parse JSON fields
+  const parsed = items.map((item) => ({
+    ...item,
+    sides: JSON.parse(item.sides),
+    extras: JSON.parse(item.extras),
+  }));
+
+  return NextResponse.json(parsed);
 }
 
 export async function POST(request: Request) {
@@ -18,15 +27,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const newItem: MenuItem = {
-    id: crypto.randomUUID(),
-    name: body.name,
-    category: body.category,
-    price: body.price,
-    active: body.active !== false,
-  };
+  const newItem = await prisma.menuItem.create({
+    data: {
+      name: body.name,
+      category: body.category,
+      price: body.price,
+      active: body.active !== false,
+      sides: JSON.stringify(body.sides || []),
+      extras: JSON.stringify(body.extras || []),
+    },
+  });
 
-  addMenuItem(newItem);
   return NextResponse.json(newItem, { status: 201 });
 }
 
@@ -37,7 +48,19 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "ID required" }, { status: 400 });
   }
 
-  updateMenuItem(body.id, body);
+  const updateData: Record<string, unknown> = {};
+  if (body.name !== undefined) updateData.name = body.name;
+  if (body.category !== undefined) updateData.category = body.category;
+  if (body.price !== undefined) updateData.price = body.price;
+  if (body.active !== undefined) updateData.active = body.active;
+  if (body.sides !== undefined) updateData.sides = JSON.stringify(body.sides);
+  if (body.extras !== undefined) updateData.extras = JSON.stringify(body.extras);
+
+  await prisma.menuItem.update({
+    where: { id: body.id },
+    data: updateData,
+  });
+
   return NextResponse.json({ success: true });
 }
 
@@ -49,6 +72,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "ID required" }, { status: 400 });
   }
 
-  deleteMenuItem(id);
+  await prisma.menuItem.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }
