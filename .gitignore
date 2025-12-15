@@ -40,4 +40,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma
 /lib/generated/prisma
+
+# database files (sensitive data)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# prisma migrations lock (optional - pode ser commitado)
+# prisma/migrations/**/*.sql

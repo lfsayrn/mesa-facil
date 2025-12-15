@@ -267,7 +267,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={confirmCustomization}
-                  className="flex-[2] py-3 text-sm font-bold bg-amber-700 text-white rounded-lg hover:bg-amber-800"
+                  className="flex-2 py-3 text-sm font-bold bg-amber-700 text-white rounded-lg hover:bg-amber-800"
                 >
                   Adicionar
                 </button>

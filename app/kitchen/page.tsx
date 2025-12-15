@@ -232,7 +232,7 @@ export default function Kitchen() {
                 </div>
 
                 {/* Items - handwritten style */}
-                <div className="p-4 flex-grow">
+                <div className="p-4 grow">
                   <ul className="space-y-2.5">
                     {order.items.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2">

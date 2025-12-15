@@ -97,7 +97,7 @@ export default function Caixa() {
     <div className="flex flex-col md:flex-row h-screen bg-amber-50/30 font-sans">
       {/* List */}
       <div className="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-stone-200 bg-white flex flex-col">
-        <header className="p-4 border-b border-stone-100 bg-gradient-to-r from-amber-50 to-white">
+        <header className="p-4 border-b border-stone-100 bg-linear-to-r from-amber-50 to-white">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center text-xl">💰</div>
